@@ -377,13 +377,6 @@ def set_environment_variable(data_dir: str = CDAWEB_PATH) -> None:
     print(f"environ['SPEDAS_DATA_DIR'] = {data_dir}\n")
 
 
-def set_environment_var(data_dir: str = "spedas_data") -> None:
-    """Sets SPEDAS_DATA_DIR environment variable."""
-    download_dir: str = join(dirname(abspath(__file__)), data_dir)
-    environ["SPEDAS_DATA_DIR"] = download_dir
-    print(f"environ['SPEDAS_DATA_DIR'] = {download_dir}\n")
-
-
 def get_elapsed_time(start: float) -> float:
     """Returns the elapsed time since 'start' in minutes with two decimals."""
     elapsed_time: float = (perf_counter() - start) / 60
