@@ -1,13 +1,13 @@
 """Constants for the SMR prediction script."""
 
 # CDAWeb .cdf folders path.
-CDAWEB_PATH: str = "/home/jvkloc/Downloads/Computational Statistics/lecture_exercises/cs"
+CDAWEB_PATH: str = ""
 # Project folder.
-FOLDER: str = f"{CDAWEB_PATH}/gradu"
+FOLDER: str = f"{CDAWEB_PATH}/"
 
 # SuperMAG data paths and filename.
-SMAG_PATH: str = f"{FOLDER}/smr_data/downloads/"
-PATH: str = f"{FOLDER}/smr_data/"
+SMAG_PATH: str = f"{FOLDER}/"
+PATH: str = f"{FOLDER}/"
 
 # Target variables.
 TARGETS: list[str] = ["SMR", "SMR00", "SMR06", "SMR12", "SMR18"]
