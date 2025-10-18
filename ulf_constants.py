@@ -4,10 +4,10 @@ from typing import Callable
 
 
 # Project folder.
-FOLDER: str = "/home/jvkloc/Downloads/Computational Statistics/lecture_exercises/cs/gradu"
+FOLDER: str = ""
 
 # SuperMAG .netcdf files path.
-SUPERMAG_DATA_PATH: str = f"{FOLDER}/p_data/"
+SUPERMAG_DATA_PATH: str = f"{FOLDER}/"
 
 # SuperMAG .netcdf columns for loading data.
 COLUMNS: list[str] = [
