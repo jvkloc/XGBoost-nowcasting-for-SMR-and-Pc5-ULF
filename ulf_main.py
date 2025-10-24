@@ -12,7 +12,7 @@ from data_utils import process_cdaweb_data, load_preprocessed_data, save_process
 from load_model import load_xgb_models, predict_with_loaded_models
 from metrics import print_prediction_metrics, print_feature_importance
 from plotting import *
-from printing import print_Pc5_statistics, print_data_gaps, print_statistics
+from printing import print_data_gaps
 from training_utils import get_prediction_dataframe
 from utils import (
     get_arguments,
