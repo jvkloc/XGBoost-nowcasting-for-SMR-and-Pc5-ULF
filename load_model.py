@@ -43,7 +43,7 @@ def predict_with_loaded_models(
 ) -> dict[str, ndarray]:
     """Returns predictions by given models based on the X_test data."""
     # Get the model features in correct order.
-    expected_features = list(models.values())[0].feature_names
+    expected_features: list[str] = list(models.values())[0].feature_names
     
     # Drop index from the data.
     Xtest: DataFrame = X_test.drop("index").select(expected_features)
@@ -58,19 +58,4 @@ def predict_with_loaded_models(
         y_preds[m] = models[m].predict(dtest)
     
     # Return predictions.
-    return y_preds
-
-
-def predict_with_loaded_models2(
-    models: dict[str, tuple[Booster, list[str]]], 
-    dtest: DMatrix
-) -> dict[str, ndarray]:
-    """Returns predictions by given models based on the aligned DMatrix."""
-    
-    # Dictionary for predictions.
-    y_preds: dict[str, ndarray] = {}
-    
-    for target, (model, _) in models.items():  # Predict with each model.
-        y_preds[target] = model.predict(dtest)
-    
     return y_preds
