@@ -18,7 +18,6 @@ from constants import (
     FOLDER
 )
 from printing import print_data_gaps
-from prune_features import select_features
 from data_utils import load_preprocessed_data, process_cdaweb_data, save_processed_data
 from load_model import load_xgb_models, predict_with_loaded_models
 from metrics import *
