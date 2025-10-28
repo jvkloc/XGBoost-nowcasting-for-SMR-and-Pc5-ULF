@@ -3,7 +3,14 @@
 from json import load, dump
 
 from cudf import DataFrame as CudaFrame
-from numpy import abs as npabs, argmax, load as npload, ndarray, save as npsave
+from numpy import (
+    abs as npabs, 
+    argmax, 
+    load as npload,
+    ndarray, 
+    save as npsave, 
+    vstack,
+)
 from polars import DataFrame
 from matplotlib.pyplot import show as mpshow
 from shap import dependence_plot, summary_plot, TreeExplainer 
@@ -56,24 +63,46 @@ def load_shap_values(folder: str, models: list[str]) -> None | dict:
     return shap
 
 
-def SHAP_analysis(models: dict, model_names: list[str], data: DataFrame) -> dict:
-    """Computes SHAP values for the 'models' given the 'data'."""
+def SHAP_analysis(
+    models: dict, 
+    model_names: list[str], 
+    data: CudaFrame,
+    batch_size: int = 20_000,
+) -> dict:
+    """Computes SHAP values for the 'models' given the 'data' in batches of 
+    'batch_size'."""
+
     shap: dict[str, ndarray | float] = {n: None for n in model_names}
-    
+    n_rows: int = len(data)
+
     for model in model_names:
-        print(f"Computing SHAP values for {model}...", end='')
+        print(f"Computing SHAP values for {model}", flush=True)
         
+        # TreeExplainer for the model.
         explainer = TreeExplainer(models[model])
+
+        # Compute expected value for the model.
+        expected_value: float = explainer.expected_value
+
+        # A list for SHAP value batches.
+        shap_batches: list[ndarray] = []
+
+        for start in range(0, n_rows, batch_size):
+            # Get the last index of the batch.
+            end: int = min(start + batch_size, n_rows)
+            
+            print(f"  batch {start // batch_size + 1}: rows {start}-{end-1} ...", end=" ", flush=True)
+
+            # Compute SHAP values for the batch.
+            shap_batches.append(explainer.shap_values(data.iloc[start:end]))
+
+            print("done", flush=True)
         
-        # type(data) = numpy array, pandas DataFrame, or cuDF DataFrame.
-        values: ndarray = explainer.shap_values(CudaFrame(data.to_numpy()))
-        
-        # Save the results.
+        # Stack all the batch SHAP values
         shap[model] = {
-            "values": values, # 2D numpy array
-            "expected_value": explainer.expected_value # float
+            "values": vstack(shap_batches), # shape (n_samples, n_features),
+            "expected_value": expected_value
         }
-        print(" done.")
     
     # Return the values.
     return shap
@@ -103,7 +132,7 @@ def get_top_feature(values: ndarray, features: list[str]) -> str:
     return features[argmax(mean_abs)]
 
 
-def plot_dependence(models: list[Booster], shap: dict, data: DataFrame) -> None:
+def plot_dependence(models: list[str], shap: dict, data: DataFrame) -> None:
     """Plots dependence of the top feature (according to 'shap') for each 
     model in 'models'."""
     
@@ -113,7 +142,7 @@ def plot_dependence(models: list[Booster], shap: dict, data: DataFrame) -> None:
     for model in models:
         # Get model's SHAP values.
         values: ndarray = shap[model]['values']
-        
+        print(f"dependency plot for {model}:")
         # Plot dependencies.
         dependence_plot(
             get_top_feature(values, features), 
@@ -126,14 +155,14 @@ def plot_dependence(models: list[Booster], shap: dict, data: DataFrame) -> None:
         mpshow(block=True)
 
 
-def main(targets: list[str] = SMR_TARGETS, folder: str = FOLDER) -> None:
+def main(targets: list[str] = P_TARGETS, folder: str = FOLDER) -> None:
     # Load data.
     data: DataFrame = load_preprocessed_data(
-        file_path=f"{folder}/test_data/smr_X_pruned.parquet"
+        file_path=f"{folder}/test_data/p_X_pruned.parquet"
     ).collect(engine="gpu")
     
     # Load models.
-    models: dict = load_xgb_models(f"{folder}/saved_models/", targets)
+    models: dict[str, Booster] = load_xgb_models(f"{folder}/saved_models/", targets)
     
     # Models' names.
     model_names: list[str] = [m for m in models]
@@ -146,8 +175,10 @@ def main(targets: list[str] = SMR_TARGETS, folder: str = FOLDER) -> None:
     
     if not (shap := load_shap_values(f"{folder}/shap_values", model_names)):
         shap: dict[str, ndarray | float] = SHAP_analysis(
-            models, model_names, test_data
+            models, model_names, CudaFrame(test_data.to_numpy())
         )
+
+        # Save the computed SHAP values.
         save_shap_values(shap, f"{folder}/shap_values", model_names)
     
     # Plot the magnitude and direction of the SHAP values.
