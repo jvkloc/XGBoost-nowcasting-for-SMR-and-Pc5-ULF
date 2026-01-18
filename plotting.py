@@ -1,7 +1,7 @@
 """Plotting functions."""
 
 import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
+from matplotlib.figure import Axes, Figure
 from numpy import arange, ndarray
 from polars import DataFrame
 from scipy.stats import probplot
@@ -376,13 +376,15 @@ def q_q_plot(residuals: DataFrame) -> None:
 
 
 def plot_top_cdaweb_features() -> None:
-    """Plots a bar chart of the top four CDAWeb features from SMR models."""
+    """Saves a bar chart of the four CDAWeb features from SMR models."""
     models: list[str] = ['SMR-00', 'SMR-06', 'SMR-12', 'SMR-18', 'SMR']
+    
+    # Updated data from the provided LaTeX table
     features: dict[str, list[float]] = {
-        'Magnitude': [0.0111, 0.0090, 0.0138, 0.0128, 0.0090],
-        'SC_pos_GSM_Re_x': [0.0077, 0.0060, 0.0051, 0.0021, 0.0027],
-        'Tpr': [0.0066, 0.0073, 0.0038, 0.0017, 0.0030],
-        'SC_pos_GSM_Re_y': [0.0045, 0.0078, 0.0041, 0.0021, 0.0015]
+        'Magnitude': [0.0124, 0.0090, 0.0138, 0.0128, 0.0090],
+        'Pos_x': [0.0195, 0.0107, 0.0055, 0.0040, 0.0040],
+        'BGSM_z': [0.0086, 0.0050, 0.0064, 0.0044, 0.0037],
+        'Pos_y': [0.0094, 0.0078, 0.0126, 0.0038, 0.0039]
     }
 
     # Plot setup
@@ -390,31 +392,34 @@ def plot_top_cdaweb_features() -> None:
     width: float = 0.2  # the width of the bars
     multiplier: float = 0.0
 
-    _: Figure; ax: ndarray
+    _: Figure; ax: Axes
     _, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
 
-    # Define LaTeX-friendly labels for the legend
+    # Updated LaTeX-friendly labels to match table descriptions
     feature_labels: dict[str, str] = {
-        'Magnitude': 'Magnitude',
-        'SC_pos_GSM_Re_x': r'$SC\_pos\_GSM\_Re\_x$',
-        'Tpr': r'$Tpr$',
-        'SC_pos_GSM_Re_y': r'$SC\_pos\_GSM\_Re\_y$'
+        'Magnitude': 'Magnetic field magnitude',
+        'Pos_x': 'Spacecraft position x coordinate',
+        'BGSM_z': 'Magnetic field z component',
+        'Pos_y': 'Spacecraft position y coordinate'
     }
 
     # Create the bars
     for attribute, measurement in features.items():
         offset: float = width * multiplier
-        _ = ax.bar(x + offset, measurement, width, label=feature_labels[attribute])
+        ax.bar(x + offset, measurement, width, label=feature_labels[attribute])
         multiplier += 1
 
     # Formatting
     ax.set_ylabel("Importance Score")
-    ax.set_title("Top four CDAWeb features")
-    ax.set_xticks(x + 1.5 * width)
+    
+    # Centers the tick labels (1.5 * width because there are 4 bars: offsets 0, 1, 2, 3)
+    ax.set_xticks(x + 1.5 * width) 
     ax.set_xticklabels(models)
-    ax.legend(loc="upper right", title="Feature")
+    
+    ax.legend(loc="upper right")
     ax.grid(axis='y', linestyle="--", alpha=0.7)
 
     # Save the figure
-    plt.savefig("smr_non_lagged_importance.png", dpi=300)
-    #plt.show() 
+    figstring: str = "smr_importance.png"
+    plt.savefig(figstring, dpi=300)
+    print(f"Plot saved as {figstring}")
