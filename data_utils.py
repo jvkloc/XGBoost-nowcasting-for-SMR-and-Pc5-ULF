@@ -26,7 +26,6 @@ from polars import (
 ) 
 from pyspedas import ace, cdf_to_tplot, wind
 from pytplot import get_data, del_data, tplot_names
-from xgboost import XGBRegressor
 
 from constants import (
     TARGETS,
