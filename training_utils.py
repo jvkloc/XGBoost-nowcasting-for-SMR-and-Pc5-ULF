@@ -1,27 +1,50 @@
-"""Utility functions for training loop funciton."""
+"""Utility functions for training_loop()."""
 
 from datetime import datetime
 from math import sqrt
 
-from numpy import ndarray
+from numpy import exp as npexp, ndarray
 from polars import col, DataFrame, Float32, lit, Series, when
 from pyarrow import Array
 from xgboost import Booster, DMatrix
 
 
+def get_original_scale_values(
+    target: str,
+    y_test_log: DataFrame, 
+    y_train_log: DataFrame
+) -> tuple[DataFrame, DataFrame, DataFrame]:
+    """Returns the y values in original scale."""
+    y_test: DataFrame = y_test_log.select(["index", target]).with_columns(
+        (col(target).exp() - 1).alias(target)
+    )
+
+    y_train: DataFrame = y_train_log.select(["index", target]).with_columns(
+        (col(target).exp() - 1).alias(target)
+    )
+
+    return y_test, y_train
+
+
 def get_prediction_dataframe(
-    pred: ndarray, y_test: DataFrame, target: str | None = None
+    pred: ndarray, 
+    y_test: DataFrame, 
+    target: str | None = None, 
+    logspace: bool = False
 ) -> DataFrame:
     """Returns Polars dataframe with the given predictions and index column."""
-    
     targets: list[str] = [col for col in y_test.columns if col != "index"]
     index_col: ndarray = y_test["index"].to_numpy()
     
+    if logspace:  # Convert values to original scale.
+        pred: ndarray = npexp(pred) - 1
+
     if pred.ndim == 1:  # Single-target prediction.
         return DataFrame(
             {"index": index_col, target: pred},
             schema={"index": y_test["index"].dtype, target: Float32}
         )
+    
     else:  # Multi-target prediction.
         return DataFrame(
             {"index": index_col, **{target: pred[:, i] for i, target in enumerate(targets)}},
@@ -39,9 +62,7 @@ def get_prediction_metrics(
     batch_threshold: int = 10_000_000,
     batch_size: int = 100_000,
 ) -> dict[str, float]:
-    """Returns prediction metrics (MSE, R^2, MAE, RMSE, training RMSE) for a 
-    single target."""
-    
+    """Returns MdAE, MAE, RMSE, MdASE, MASE, and RMSSE of a single model."""
     # Testing and prediction values.
     t: Series = y_test[target]
     p: Series = y_pred[target]
@@ -142,3 +163,4 @@ def get_weights(
     del weighted
 
     return sample_weights
+
