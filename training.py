@@ -9,6 +9,7 @@ from xgboost import Booster, DMatrix, train
 
 from training_utils import (
     get_target_label,
+    get_original_scale_values,
     get_prediction_dataframe,
     get_prediction_metrics,
     get_weights,
@@ -32,10 +33,10 @@ def train_xgboost(
     # Drop index columns.
     Xtrain: DataFrame = X_train.drop("index")
     Xtest: DataFrame = X_test.drop("index")
-
+    
     # Get feature names.
     feature_names: list[str] = Xtrain.columns
-
+    
     # Set XGBoost parameters.
     dtrain = DMatrix(
         data=Xtrain.to_arrow(), 
@@ -97,6 +98,7 @@ def training_loop(
         
         for target in targets: # Train a model for each target.
             model: Booster; dtrain: DMatrix; dtest: DMatrix; evals: dict
+            
             model, dtrain, dtest, evals = train_xgboost(
                 X_train,
                 X_test,
@@ -113,7 +115,7 @@ def training_loop(
             prediction: ndarray = model.predict(
                 dtest, iteration_range=iter_range
             )
-
+            
             # Set the predictions to a DataFrame.
             y_pred: DataFrame = get_prediction_dataframe(
                 prediction, y_test.select(["index", target]), target=target
@@ -121,11 +123,11 @@ def training_loop(
             
             # Store metrics.
             fold_metrics: dict = get_prediction_metrics(
-                y_test.select(target),
+                y_test,
                 y_pred,
                 model,
                 dtrain,
-                y_train,
+                y_train, 
                 target=target
             )
             metrics_per_fold.append(
@@ -136,10 +138,10 @@ def training_loop(
             del dtrain, dtest, prediction, fold_metrics
         
             if fold != total_folds:
-                del model, y_pred, evals, #y_pred_inverse
+                del model, y_pred, evals
             else: # Last cross-validation split.
                 y_preds[target] = y_pred
-                y_tests[target] = y_test.select(["index", target]) 
+                y_tests[target] = y_test.select(["index", target])
                 X_tests[target] = X_test
                 evaluations[target] = evals
                 models[target] = model
