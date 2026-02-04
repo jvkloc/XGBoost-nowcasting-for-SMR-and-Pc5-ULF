@@ -14,8 +14,7 @@ from constants import (
     TARGETS, 
     DESCRIPTION, 
     CDAWEB_PATH, 
-    PATH, 
-    FEATURES,
+    PATH,
 )
 from data_utils import (
     add_lagged_values, 
@@ -192,7 +191,7 @@ def get_cv_folds(
     (X) and validation (y) data."""
 
     folds: list[tuple[DataFrame, DataFrame, DataFrame, DataFrame]] = []
-
+    
     # Get validation period start and end dates.
     period_ranges: list[tuple[datetime, datetime]]
     extreme_values_weeks: list[tuple[datetime, datetime]]
@@ -248,10 +247,8 @@ def get_cv_folds(
     return training, validation, folds, extreme_values_weeks
 
 
-def get_extreme_weeks(
-    y: DataFrame, targets: list[str]
-) -> list[tuple[datetime, datetime]]:
-    """Returns a list of random unique two-week period start and end datetime 
+def get_extreme_weeks(y: DataFrame, targets: list[str]) -> list[tuple[datetime, datetime]]:
+    """Returns a list of unique two-week period start and end datetime 
     tuples from unique years. The periods contain the highest number of extreme 
     values of the targets."""
 
@@ -269,7 +266,7 @@ def get_extreme_weeks(
 
         # Filter rows with extreme values.
         extremes: DataFrame = y.filter(
-            (col(target) < q_low) | (col(target) > q_high) &
+            ((col(target) < q_low) | (col(target) > q_high)) & 
             (col("index").dt.year() != 1999)
         )
 
@@ -303,20 +300,20 @@ def get_extreme_weeks(
                  by=["max_extreme_count", "year"], descending=[True, True]
             )
         )
-        
-        for target in targets:
+
+        # Iterate through the top years for the current target.
+        for row in unique_years.iter_rows(named=True):
             # Check if we already have 3 years for this target.
             if len(dates[target]) == 3:
                 continue
 
-            # Iterate through the top years for the current target.
-            for row in unique_years.iter_rows(named=True):
-                year: int = row['year']
-                start_date: datetime = row['index']
-                if year not in years:
-                    dates[target].append(start_date)
-                    years.add(year)
-                    break 
+            year: int = row['year']
+            start_date: datetime = row['index']
+            
+            if year not in years:
+                dates[target].append(start_date)
+                years.add(year)
+                break 
     
     # Return a list of start and end date tuples for get_validation_weeks().
     return [
@@ -375,6 +372,13 @@ def set_environment_variable(data_dir: str = CDAWEB_PATH) -> None:
     """Sets SPEDAS_DATA_DIR environment variable."""
     environ["SPEDAS_DATA_DIR"] = data_dir
     print(f"environ['SPEDAS_DATA_DIR'] = {data_dir}\n")
+
+
+def set_environment_var(data_dir: str = "spedas_data") -> None:
+    """Sets SPEDAS_DATA_DIR environment variable."""
+    download_dir: str = join(dirname(abspath(__file__)), data_dir)
+    environ["SPEDAS_DATA_DIR"] = download_dir
+    print(f"environ['SPEDAS_DATA_DIR'] = {download_dir}\n")
 
 
 def get_elapsed_time(start: float) -> float:
