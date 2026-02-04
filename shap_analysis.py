@@ -12,8 +12,8 @@ from numpy import (
     vstack,
 )
 from polars import DataFrame
-from matplotlib.pyplot import show as mpshow
-from shap import dependence_plot, summary_plot, TreeExplainer 
+from matplotlib.pyplot import show as mpshow, subplots
+from shap import dependence_plot, summary_plot, TreeExplainer
 from xgboost import Booster
 
 from constants import FOLDER, TARGETS as SMR_TARGETS
@@ -27,12 +27,13 @@ def save_shap_values(shap: dict, folder: str, models: list[str]) -> None:
     'folder' as .npy files."""
     
     for model in models:
-        # Save SHAP values as .npy file
-        npsave(f"{folder}/{model}_shap_values.npy", shap[model]['values'])
-        # Save expected value as JSON
-        with open(f"{folder}/{model}_expected_value.json", "w") as f:
-            dump({"expected_value": float(shap[model]['expected_value'])}, f)
-        print(f"{model} SHAP values saved to {folder}")
+        if shap.get(model) is not None:
+            # Save SHAP values as .npy file
+            npsave(f"{folder}/{model}_shap_values.npy", shap[model]['values'])
+            # Save expected value as JSON
+            with open(f"{folder}/{model}_expected_value.json", "w") as f:
+                dump({"expected_value": float(shap[model]['expected_value'])}, f)
+            print(f"{model} SHAP values saved to {folder}")
 
 
 def load_shap_values(folder: str, models: list[str]) -> None | dict:
@@ -72,10 +73,11 @@ def SHAP_analysis(
     """Computes SHAP values for the 'models' given the 'data' in batches of 
     'batch_size'."""
 
-    shap: dict[str, ndarray | float] = {n: None for n in model_names}
+    result: dict[str, ndarray | float] = {n: None for n in model_names}
     n_rows: int = len(data)
-
+    
     for model in model_names:
+        if model != "SMR18": continue
         print(f"Computing SHAP values for {model}", flush=True)
         
         # TreeExplainer for the model.
@@ -99,23 +101,26 @@ def SHAP_analysis(
             print("done", flush=True)
         
         # Stack all the batch SHAP values
-        shap[model] = {
+        result[model] = {
             "values": vstack(shap_batches), # shape (n_samples, n_features),
             "expected_value": expected_value
         }
     
     # Return the values.
-    return shap
+    return result
 
 
-def plot_summary(model_names: list[str], shap: dict, data: DataFrame) -> None:
+def plot_summary(model_names: list[str], values: dict, data: DataFrame) -> None:
     """Plots summaries of the results of each model."""
     for model in model_names:
+        if model != "SMR18": continue
         print(f"{model} summary plot:")
+        _, ax = subplots(1, 1)
         summary_plot(
-            shap[model]['values'], 
-            data.to_numpy(), 
+            values[model]['values'],
+            data.to_numpy(),
             feature_names=data.columns,
+            max_display=50, 
             show=False
         )
         mpshow(block=True)
@@ -155,10 +160,10 @@ def plot_dependence(models: list[str], shap: dict, data: DataFrame) -> None:
         mpshow(block=True)
 
 
-def main(targets: list[str] = P_TARGETS, folder: str = FOLDER) -> None:
+def main(targets: list[str] = SMR_TARGETS, folder: str = FOLDER) -> None:
     # Load data.
     data: DataFrame = load_preprocessed_data(
-        file_path=f"{folder}/test_data/p_X_pruned.parquet"
+        file_path=f"{folder}/test_data/smr_X_pruned.parquet"
     ).collect(engine="gpu")
     
     # Load models.
@@ -185,7 +190,7 @@ def main(targets: list[str] = P_TARGETS, folder: str = FOLDER) -> None:
     plot_summary(model_names, shap, test_data)
 
     # Plot dependencies of top features.
-    plot_dependence(model_names, shap, test_data)
+    #plot_dependence(model_names, shap, test_data)
 
 
 if __name__=="__main__":
